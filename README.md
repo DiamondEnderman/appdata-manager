@@ -1,2 +1,2 @@
 # appdata-manager
-Just my take on an idea for managing appdata
+A lightweight, cross-platform APPDATA file and directory manager.
