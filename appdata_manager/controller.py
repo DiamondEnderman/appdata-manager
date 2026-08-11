@@ -2,9 +2,6 @@ import os
 import json
 from dataclasses import dataclass, field
 
-class NoneOrStr:
-    pass
-
 class ArgTypeError(Exception):
     pass
 
@@ -22,21 +19,36 @@ class FileControls:
         self.file_path = file_path
         self.encoding = encoding
 
-    def push_data(self, data) -> None:
+    def push_data(self, data: dict) -> None:
+        if not isinstance(data, dict):
+            raise ArgTypeError(                
+                f"Invalid folder argument type: '{type(data).__name__}'. "
+                "Expected dict."
+            )
+        
         parent_dir = os.path.dirname(self.file_path)
 
         if parent_dir and not os.path.exists(parent_dir):
             os.makedirs(parent_dir)
 
-        with open(self.file_path, "w", encoding = self.encoding) as file:
+        temp_path = f"{self.file_path}.tmp"
+
+        with open(temp_path, "w", encoding = self.encoding) as file:
             json.dump(data, file, indent = 4)
+            file.flush()
+            os.fsync(file.fileno())
+
+        os.replace(temp_path, self.file_path)
 
     def pull_data(self, default = None) -> dict:
         if not os.path.exists(self.file_path):
             return default if default is not None else {}
 
         with open(self.file_path, "r", encoding = self.encoding) as file:
-            return json.load(file)
+            try:
+                return json.load(file)
+            except json.JSONDecodeError:
+                return default if default is not None else {} 
 
 class AppData:
     """
@@ -92,6 +104,9 @@ class AppData:
         """
         Factory method that returns a FileControls instance bound to this Appdata Directory and encoding
         """
+
+        if not self.main_path:
+            raise RuntimeError("Appdata has not been initialized. Call initialize() before accessing files")
 
         if isinstance(relative_path, (list, tuple)):
             absolute_path = os.path.join(self.main_path, *relative_path)
