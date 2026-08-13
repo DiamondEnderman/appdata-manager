@@ -19,11 +19,11 @@ class FileControls:
         self.file_path = file_path
         self.encoding = encoding
 
-    def push_data(self, data: dict) -> None:
-        if not isinstance(data, dict):
+    def push_data(self, data: dict | list) -> None:
+        if not isinstance(data, dict | list):
             raise ArgTypeError(                
                 f"Invalid folder argument type: '{type(data).__name__}'. "
-                "Expected dict."
+                "Expected dict | list."
             )
         
         parent_dir = os.path.dirname(self.file_path)
@@ -40,7 +40,7 @@ class FileControls:
 
         os.replace(temp_path, self.file_path)
 
-    def pull_data(self, default = None) -> dict:
+    def pull_data(self, default = None) -> dict | list:
         if not os.path.exists(self.file_path):
             return default if default is not None else {}
 
