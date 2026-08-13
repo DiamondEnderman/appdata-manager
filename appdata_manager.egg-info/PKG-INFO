@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: appdata_manager
-Version: 1.0.0
+Version: 1.0.1
 Summary: A lightweight, cross-platform APPDATA file and directory manager.
 Author: DiamondEnderman
 Description-Content-Type: text/markdown

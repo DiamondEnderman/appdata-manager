@@ -1,3 +1,3 @@
-from controller import AppData
-from controller import StorageConfig
-from controller import FileControls
+from .controller import AppData
+from .controller import StorageConfig
+from .controller import FileControls
