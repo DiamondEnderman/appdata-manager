@@ -2,7 +2,6 @@ LICENSE
 README.md
 pyproject.toml
 appdata_manager/__init__.py
-appdata_manager/controller.py
 appdata_manager.egg-info/PKG-INFO
 appdata_manager.egg-info/SOURCES.txt
 appdata_manager.egg-info/dependency_links.txt
