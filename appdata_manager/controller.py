@@ -70,7 +70,6 @@ class AppData:
         """
         Initializes the main folder and all subfolders
         """
-
         folder_name = f"{self.app_name}-Test" if self.config.is_test else self.app_name
 
         self.main_path = os.path.join(self.base_dir, folder_name)
@@ -104,7 +103,6 @@ class AppData:
         """
         Factory method that returns a FileControls instance bound to this Appdata Directory and encoding
         """
-
         if not self.main_path:
             raise RuntimeError("Appdata has not been initialized. Call initialize() before accessing files")
 
