@@ -1,15 +1,16 @@
 from dataclasses import dataclass, field
 import os
-from enum import Enum, StrEnum, auto
+from enum import Enum, StrEnum
 from typing import Optional
 
 
-class FileType(StrEnum):
+class SupportedFileType(StrEnum):
     """
     These are all of the currently supported file types.
     """
     JSON = ".json"
     DB = ".db"
+    LOG = "log"
 
 class StandardLinuxPath(StrEnum):
     """
@@ -43,7 +44,7 @@ class StorageConfig:
 @dataclass
 class File:
     name: str
-    file_type: FileType
+    file_type: SupportedFileType
         #NOTE So far not needed in this module, might move to another
 
 class AppData:
