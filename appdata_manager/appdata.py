@@ -19,15 +19,24 @@ class StandardLinuxPath(StrEnum):
     CONFIG = os.path.expanduser("~/.config")
     SHARE = os.path.expanduser("~/.local/share")
     STATE = os.path.expanduser("~/.local/state")
+    """
+    [NOTICE]
+    it is of note that even if you are on windows, these will execute and your 
+    expanded user profile (ie.. C:/Users/{Your Username}/.config) will be stored in memory, I will 
+    find a way to fix this later but it isn't a massive deal for now
+    """
 
 @dataclass
 class StorageConfig:
     """
-    is_test is True by default, which appends -test to your base directory name
+    Setting is_test to True appends -test to your base directory name.
+    I set this up this way so that you can have multiple appdata directories
+    in the same place for the same app, but split between testing data and live
+    data.
     """
     base_path_override: Optional[str | StandardLinuxPath] = None
+    subfolders: list[str | list[str] | tuple[str]] = field(default_factory = list)
     is_test: bool = True 
-    subfolders: list[str | list | tuple] = field(default_factory = list)
 
 #--------------------------------
 #So far not needed in this module
@@ -52,4 +61,20 @@ class AppData:
 
         self.APPDATA_PATH = os.getenv("APPDATA") or StandardLinuxPath.SHARE
 
-        self.base_directory = self.config.base_path_override or os.path.join(self.APPDATA_PATH, self.app_name)
+        self.base_path = self.config.base_path_override or self.APPDATA_PATH
+
+        _formatted_name = f"{self.app_name}-test" if self.config.is_test else self.app_name
+        self.app_directory = os.path.join(self.base_path, _formatted_name)
+
+        if populate:
+            pass #NOT YET IMPLEMENTED
+
+    def populate(self):
+        """
+        Creates the base directory if it has not already been created
+        and does the same with all subfolders given in the StorageConfig instance
+        """
+
+
+    def create_folder(self, name: str)
+
