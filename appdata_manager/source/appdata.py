@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 import os
-from enum import Enum, StrEnum
-from typing import Optional
+from enum import StrEnum
+from typing import Optional, Final
 
 
 class SupportedFileType(StrEnum):
@@ -60,12 +60,12 @@ class AppData:
         self.app_name: str = app_name
         self.config: StorageConfig = config or StorageConfig()
 
-        self.APPDATA_PATH = os.getenv("APPDATA") or StandardLinuxPath.SHARE
+        self.APPDATA_PATH: Final[str] = os.getenv("APPDATA") or StandardLinuxPath.SHARE
 
-        self.base_path = self.config.base_path_override or self.APPDATA_PATH
+        self.base_path: str = self.config.base_path_override or self.APPDATA_PATH
 
-        _formatted_name = f"{self.app_name}-test" if self.config.is_test else self.app_name
-        self.app_directory = os.path.join(self.base_path, _formatted_name)
+        _formatted_name: str = f"{self.app_name}-test" if self.config.is_test else self.app_name
+        self.app_directory_path: str = os.path.join(self.base_path, _formatted_name)
 
         if provision:
             self.provision()
@@ -95,7 +95,7 @@ class AppData:
 
         If no arguments are given, it will just create the base app directory.
         """
-        folder_path = os.path.join(self.app_directory, *folders)
+        folder_path: str = os.path.join(self.app_directory_path, *folders)
         os.makedirs(folder_path, exist_ok=True)
 
         return folder_path
