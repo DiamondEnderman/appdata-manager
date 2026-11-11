@@ -4,12 +4,12 @@ from enum import Enum, StrEnum, auto
 from typing import Optional
 
 
-class FileType(StrEnum): #These are all of the currently supported file types
+class FileType(StrEnum):
+    """
+    These are all of the currently supported file types.
+    """
     JSON = ".json"
     DB = ".db"
-
-class _RootKey(StrEnum):
-    WINDOWS = "appdata"
 
 class StandardLinuxPath(StrEnum):
     """
@@ -19,12 +19,10 @@ class StandardLinuxPath(StrEnum):
     CONFIG = os.path.expanduser("~/.config")
     SHARE = os.path.expanduser("~/.local/share")
     STATE = os.path.expanduser("~/.local/state")
-    """
-    [NOTICE]
-    it is of note that even if you are on windows, these will execute and your 
-    expanded user profile (ie.. C:/Users/{Your Username}/.config) will be stored in memory, I will 
-    find a way to fix this later but it isn't a massive deal for now
-    """
+        # NOTE:
+        # it is of note that even if you are on windows, these will execute and your 
+        # expanded user profile (ie.. C:/Users/{Your Username}/.config) will be stored in memory, I will 
+        # find a way to fix this later but it isn't a massive deal for now
 
 @dataclass
 class StorageConfig:
@@ -35,16 +33,18 @@ class StorageConfig:
     data.
     """
     base_path_override: Optional[str | StandardLinuxPath] = None
-    subfolders: list[str | list[str] | tuple[str]] = field(default_factory = list)
-    is_test: bool = True 
+    subfolders: list[str | list[str] | tuple[str, ...]] = field(default_factory=list) 
+    is_test: bool = False 
+        #TODO Something I want to add is just in time provisioning,
+        #So I want to make this StorageConfig object work without NEEDING predetermined subfolders
+        #Thats sort of a for later project since IMO having a base folder setup is going to be quite useful
+        #for anything I make.
 
-#--------------------------------
-#So far not needed in this module
 @dataclass
 class File:
     name: str
     file_type: FileType
-#--------------------------------
+        #NOTE So far not needed in this module, might move to another
 
 class AppData:
     """
@@ -55,7 +55,7 @@ class AppData:
     but this can be overridden with standard linux paths or a completely custom override
     """
 
-    def __init__(self, app_name: str, config: Optional[StorageConfig] | None = None, populate: bool = True):
+    def __init__(self, app_name: str, config: Optional[StorageConfig] = None, provision: bool = True) -> None:
         self.app_name: str = app_name
         self.config: StorageConfig = config or StorageConfig()
 
@@ -66,15 +66,35 @@ class AppData:
         _formatted_name = f"{self.app_name}-test" if self.config.is_test else self.app_name
         self.app_directory = os.path.join(self.base_path, _formatted_name)
 
-        if populate:
-            pass #NOT YET IMPLEMENTED
+        if provision:
+            self.provision()
 
-    def populate(self):
+    def provision(self) -> None:
         """
         Creates the base directory if it has not already been created
         and does the same with all subfolders given in the StorageConfig instance
         """
+        self.create_folder()
+        for item in self.config.subfolders:
+            if isinstance(item, list | tuple):
+                self.create_folder(*item)
+            else:
+                self.create_folder(item)
+            
 
+    def create_folder(self, *folders: str) -> str: 
+        """
+        Creates a folder within the base app directory.
+        If more than one argument is given, it will create nested folders
+        in the base app directory, with each previous argument being the parent folder
+        of the successive argument.
 
-    def create_folder(self, name: str)
+        If the data is in list or tuple format, be sure to unpack it into arguments when
+        calling this function.
 
+        If no arguments are given, it will just create the base app directory.
+        """
+        folder_path = os.path.join(self.app_directory, *folders)
+        os.makedirs(folder_path, exist_ok=True)
+
+        return folder_path
