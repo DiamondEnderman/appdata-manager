@@ -3,15 +3,6 @@ import os
 from enum import StrEnum
 from typing import Optional, Final
 
-
-class SupportedFileType(StrEnum):
-    """
-    These are all of the currently supported file types.
-    """
-    JSON = ".json"
-    DB = ".db"
-    LOG = "log"
-
 class StandardLinuxPath(StrEnum):
     """
     These are some of the industry standard linux paths for appdata.
@@ -39,13 +30,7 @@ class StorageConfig:
         #TODO Something I want to add is just in time provisioning,
         #So I want to make this StorageConfig object work without NEEDING predetermined subfolders
         #Thats sort of a for later project since IMO having a base folder setup is going to be quite useful
-        #for anything I make.
-
-@dataclass
-class File:
-    name: str
-    file_type: SupportedFileType
-        #NOTE So far not needed in this module, might move to another
+        #for anything I personally make.
 
 class AppData:
     """
@@ -80,8 +65,7 @@ class AppData:
             if isinstance(item, list | tuple):
                 self.create_folder(*item)
             else:
-                self.create_folder(item)
-            
+                self.create_folder(item)    
 
     def create_folder(self, *folders: str) -> str: 
         """
