@@ -26,6 +26,7 @@ class SupportedFileType(StrEnum):
     These are all of the currently supported file types.
     """
     JSON = ".json"
+    #TODO Uncomment these when they are added
     #DB = ".db"
     #LOG = ".log"
     TMP = ".tmp"
@@ -132,3 +133,6 @@ class JsonFile(_SupportedFile):
                 os.replace(self.file_path, corrupted_path)
 
                 raise CorruptedFileError(self.file_path, notes=f"Saving corrupted version at {corrupted_path}")
+
+#TODO
+#Need to add .db and .log file support
