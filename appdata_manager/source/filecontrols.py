@@ -26,8 +26,8 @@ class SupportedFileType(StrEnum):
     These are all of the currently supported file types.
     """
     JSON = ".json"
-    DB = ".db"
-    LOG = ".log"
+    #DB = ".db"
+    #LOG = ".log"
     TMP = ".tmp"
     BAK = ".bak"
     CORRUPT = ".corrupt"
