@@ -11,8 +11,8 @@ class StandardLinuxPath(StrEnum):
     CONFIG = os.path.expanduser("~/.config")
     SHARE = os.path.expanduser("~/.local/share")
     STATE = os.path.expanduser("~/.local/state")
-        # NOTE:
-        # it is of note that even if you are on windows, these will execute and your 
+        # FIXME:
+        # it is of note that even if you are on windows, these enum definitions will execute and your 
         # expanded user profile (ie.. C:/Users/{Your Username}/.config) will be stored in memory, I will 
         # find a way to fix this later but it isn't a massive deal for now
 
