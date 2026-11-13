@@ -4,19 +4,21 @@ from typing import Optional, Final
 import json
 import os
 
+from custom_exceptions import Error
+
 from shutil import copy2
 
-class MissingDirectoryError(Exception):
+class MissingDirectoryError(Error):
     def __init__(self, directory_path: str) -> None:
         message = f"Directory Not Found at path: {directory_path}"
         super().__init__(message)
 
-class MissingFileError(Exception):
+class MissingFileError(Error):
     def __init__(self, file_path: str, notes: Optional[str] = "None") -> None:
         message = f"File Not Found at path: {file_path}. Notes: {notes}"
         super().__init__(message)
 
-class CorruptedFileError(Exception):
+class CorruptedFileError(Error):
     def __init__(self, file_path: str, notes: Optional[str] = "None") -> None:
         message = f"File corrupted at: {file_path}. Notes: {notes}"
         super().__init__(message)
@@ -27,7 +29,7 @@ class SupportedFileType(StrEnum):
     """
     JSON = ".json"
     #TODO Uncomment these when they are added
-    #DB = ".db"
+    DB = ".db"
     #LOG = ".log"
     TMP = ".tmp"
     BAK = ".bak"
@@ -136,3 +138,18 @@ class JsonFile(_SupportedFile):
 
 #TODO
 #Need to add .db and .log file support
+
+@dataclass
+class DbFile(_SupportedFile):
+    file_type: SupportedFileType = SupportedFileType.DB
+    directory_provision: bool = True
+
+    def __post_init__(self):
+        if self.directory_provision:
+            self.provide_directory()
+        
+
+    def provide_directory(self):
+        os.makedirs(self.directory_path, exist_ok=True)
+
+    
