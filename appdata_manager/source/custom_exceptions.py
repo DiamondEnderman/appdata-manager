@@ -11,3 +11,5 @@ class Error(CustomException):
         formatted_message: str = f"{message_start}{message}"
         super().__init__(formatted_message)
 
+#TODO
+#Need to add warnings module.
