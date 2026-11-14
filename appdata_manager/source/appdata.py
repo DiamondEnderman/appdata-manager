@@ -16,11 +16,11 @@ class _OperatingSystem(StrEnum):
     LINUX = "linux"
     MAC = "darwin"
 
-class StandardPaths(StrEnum):
+class StandardPath(StrEnum):
     def resolve(self) -> str:
         raise NotImplementedError
 
-class StandardWindowsPath(StandardPaths):
+class StandardWindowsPath(StandardPath):
     """
     Standard Windows paths for appdata.
     These can be passed directly as a base path override
@@ -39,7 +39,7 @@ class StandardWindowsPath(StandardPaths):
         return envelope
 
 
-class StandardLinuxPath(StandardPaths):
+class StandardLinuxPath(StandardPath):
     """
     These are some of the industry standard linux paths for appdata.
     These can be passed directly as a base path override
@@ -54,7 +54,7 @@ class StandardLinuxPath(StandardPaths):
 
         return os.path.expanduser(self)
 
-class StandardMacOSPath(StandardPaths):
+class StandardMacOSPath(StandardPath):
     """
     Standard Mac paths for appdata.
     These can be passed directly as a base path override
@@ -79,7 +79,7 @@ class StorageConfig:
 
     Base path override accepts members from the StandardPath enumclasses, full paths, or ~ paths.
     """
-    base_path_override: Optional[str | StandardPaths] = None
+    base_path_override: Optional[str | StandardPath] = None
     subfolders: list[str | list[str] | tuple[str, ...]] = field(default_factory=list) 
     is_test: bool = False 
         #TODO Something I want to add is just in time provisioning,
@@ -93,6 +93,9 @@ class StorageConfig:
 
         if self.base_path_override is not None and not self.base_path_override.strip():
             raise InvalidPathError(self.base_path_override, notes="Base path override cannot be empty or consist of only whitespace")
+
+        if isinstance(self.base_path_override, str) and not isinstance(self.base_path_override, StandardPath):
+            warnings.warn("Use with caution.", ManualOverrideWarning)
 
 class AppData:
     """
@@ -150,17 +153,13 @@ class AppData:
     def _get_appdata_path(self) -> str:
         match sys.platform:
             case _OperatingSystem.WINDOWS:
-                local_appdata = os.getenv(StandardWindowsPath.LOCAL)
-                if local_appdata is None:
-                    raise MissingEnvironmentVariable(StandardWindowsPath.LOCAL) #this is pretty much here to make pylance shut up
-                
-                appdata_path: str = local_appdata
+                appdata_path: str = StandardWindowsPath.LOCAL.resolve()
 
             case _OperatingSystem.LINUX:
-                appdata_path: str = os.path.expanduser(StandardLinuxPath.SHARE)
+                appdata_path: str = StandardLinuxPath.SHARE.resolve()
 
             case _OperatingSystem.MAC:
-                appdata_path: str = os.path.expanduser(StandardMacOSPath.APPLICATION_SUPPORT)
+                appdata_path: str = StandardMacOSPath.APPLICATION_SUPPORT.resolve()
 
             case _:
                 raise UnsupportedOS(operating_system=sys.platform)
@@ -168,40 +167,18 @@ class AppData:
         return appdata_path
 
     def _load_app_directory_path(self) -> None:
-            #TODO this one is kinda ugly, gotta clean it up later
+        match self.config.base_path_override:
+            case StandardPath():
+                self.base_path = self.config.base_path_override.resolve()
 
-        if self.config.base_path_override is not None:
-            match self.config.base_path_override:
-                case StandardWindowsPath() as environment_key:
-                    if sys.platform != _OperatingSystem.WINDOWS:
-                        raise OSError("Cannot use a standard windows path as a base path override. Incompatible OS.")
+            case str():
+                self.base_path = os.path.expanduser(self.config.base_path_override)
 
-                    envelope = os.getenv(environment_key)
-                    if envelope is None:
-                        raise MissingEnvironmentVariable(environment_key) 
-                    
-                    self.base_path: str = envelope
-                    
-                case StandardLinuxPath() as linux_path:
-                    if sys.platform != _OperatingSystem.LINUX:
-                        warnings.warn("Path provided is a Linux standard.", WrongOSPathOverrideWarning)
+            case None:
+                self.base_path = self._get_appdata_path()
 
-                    self.base_path: str = os.path.expanduser(linux_path)
-
-                case StandardMacOSPath() as mac_path:
-                    if sys.platform != _OperatingSystem.MAC:
-                        warnings.warn("Path provided is a MacOS standard.", WrongOSPathOverrideWarning)
-
-                    self.base_path: str = os.path.expanduser(mac_path)
-
-                case str():
-                    warnings.warn("Use with caution.", ManualOverrideWarning)
-                    self.base_path: str = os.path.expanduser(self.config.base_path_override)
-
-                case _:
-                    raise SkillIssue("Im not gonna lie I dont know how you got here.")
-        else:
-            self.base_path:str = self._get_appdata_path()
+            case _:
+                raise SkillIssue("Im not gonna lie I dont know how you got here.")
 
         _formatted_name: str = f"{self.app_name}-test" if self.config.is_test else self.app_name
         self.app_directory_path: str = os.path.join(self.base_path, _formatted_name)
