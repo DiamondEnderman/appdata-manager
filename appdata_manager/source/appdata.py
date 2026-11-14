@@ -1,20 +1,73 @@
 from dataclasses import dataclass, field
 import os
 from enum import StrEnum
-from typing import Optional, Final
+from typing import Optional
+import sys
+import warnings
 
-class StandardLinuxPath(StrEnum):
+from .exceptions import (
+    InvalidNameError, InvalidPathError, UnsupportedOS, SkillIssue, 
+    WrongOSPathOverrideWarning, ManualOverrideWarning, MissingEnvironmentVariable,
+    IncompatibleOSError
+)
+
+class _OperatingSystem(StrEnum):
+    WINDOWS = "win32"
+    LINUX = "linux"
+    MAC = "darwin"
+
+class StandardPaths(StrEnum):
+    def resolve(self) -> str:
+        raise NotImplementedError
+
+class StandardWindowsPath(StandardPaths):
+    """
+    Standard Windows paths for appdata.
+    These can be passed directly as a base path override
+    """
+    ROAMING = "APPDATA"
+    LOCAL = "LOCALAPPDATA"
+
+    def resolve(self) -> str:
+        if sys.platform != _OperatingSystem.WINDOWS:
+            raise IncompatibleOSError(self, "Cannot use Windows environment variables on non-Windows machines.")
+        
+        envelope = os.getenv(self)
+        if envelope is None:
+            raise MissingEnvironmentVariable(self)
+        
+        return envelope
+
+
+class StandardLinuxPath(StandardPaths):
     """
     These are some of the industry standard linux paths for appdata.
-    If you want something completely custom you will have to use your own paths.
+    These can be passed directly as a base path override
     """
-    CONFIG = os.path.expanduser("~/.config")
-    SHARE = os.path.expanduser("~/.local/share")
-    STATE = os.path.expanduser("~/.local/state")
-        # FIXME:
-        # it is of note that even if you are on windows, these enum definitions will execute and your 
-        # expanded user profile (ie.. C:/Users/{Your Username}/.config) will be stored in memory, I will 
-        # find a way to fix this later but it isn't a massive deal for now
+    CONFIG = "~/.config"
+    SHARE = "~/.local/share"
+    STATE = "~/.local/state"
+
+    def resolve(self) -> str:
+        if sys.platform != _OperatingSystem.LINUX:
+            warnings.warn("Path provided is a Linux standard.", WrongOSPathOverrideWarning)
+
+        return os.path.expanduser(self)
+
+class StandardMacOSPath(StandardPaths):
+    """
+    Standard Mac paths for appdata.
+    These can be passed directly as a base path override
+    """
+    APPLICATION_SUPPORT = "~/Library/Application Support"
+    CACHES = "~/Library/Caches"
+    LOGS = "~/Library/Logs"
+
+    def resolve(self) -> str:
+        if sys.platform != _OperatingSystem.MAC:
+            warnings.warn("Path provided is a MacOS standard.", WrongOSPathOverrideWarning)
+
+        return os.path.expanduser(self)
 
 @dataclass
 class StorageConfig:
@@ -23,8 +76,10 @@ class StorageConfig:
     I set this up this way so that you can have multiple appdata directories
     in the same place for the same app, but split between testing data and live
     data.
+
+    Base path override accepts members from the StandardPath enumclasses, full paths, or ~ paths.
     """
-    base_path_override: Optional[str | StandardLinuxPath] = None
+    base_path_override: Optional[str | StandardPaths] = None
     subfolders: list[str | list[str] | tuple[str, ...]] = field(default_factory=list) 
     is_test: bool = False 
         #TODO Something I want to add is just in time provisioning,
@@ -32,25 +87,33 @@ class StorageConfig:
         #Thats sort of a for later project since IMO having a base folder setup is going to be quite useful
         #for anything I personally make.
 
+    def __post_init__(self):
+        if not isinstance(self.base_path_override, str | None):
+            raise SkillIssue(f"You haven't even got the prerequisites ready. Type: {type(self.base_path_override).__name__}")
+
+        if self.base_path_override is not None and not self.base_path_override.strip():
+            raise InvalidPathError(self.base_path_override, notes="Base path override cannot be empty or consist of only whitespace")
+
 class AppData:
     """
     Storage manager that handles directory management.
-    Functional on both Windows and Linux.
+    Functional on Windows, Linux, and MacOS.
     
     On linux, the base directory defaults to .local/share/
     but this can be overridden with standard linux paths or a completely custom override
     """
 
     def __init__(self, app_name: str, config: Optional[StorageConfig] = None, provision: bool = True) -> None:
+        if not isinstance(app_name, str):
+            raise SkillIssue(notes=f"Why did you think you could name your app anything other than a string??? Type: {type(app_name).__name__}")
+        
+        if not app_name.strip():
+            raise InvalidNameError(app_name, notes="Application name cannot be empty or consist of only whitespace.")
+
         self.app_name: str = app_name
         self.config: StorageConfig = config or StorageConfig()
 
-        self.APPDATA_PATH: Final[str] = os.getenv("APPDATA") or StandardLinuxPath.SHARE
-
-        self.base_path: str = self.config.base_path_override or self.APPDATA_PATH
-
-        _formatted_name: str = f"{self.app_name}-test" if self.config.is_test else self.app_name
-        self.app_directory_path: str = os.path.join(self.base_path, _formatted_name)
+        self._load_app_directory_path()
 
         if provision:
             self.provision()
@@ -83,3 +146,62 @@ class AppData:
         os.makedirs(folder_path, exist_ok=True)
 
         return folder_path
+
+    def _get_appdata_path(self) -> str:
+        match sys.platform:
+            case _OperatingSystem.WINDOWS:
+                local_appdata = os.getenv(StandardWindowsPath.LOCAL)
+                if local_appdata is None:
+                    raise MissingEnvironmentVariable(StandardWindowsPath.LOCAL) #this is pretty much here to make pylance shut up
+                
+                appdata_path: str = local_appdata
+
+            case _OperatingSystem.LINUX:
+                appdata_path: str = os.path.expanduser(StandardLinuxPath.SHARE)
+
+            case _OperatingSystem.MAC:
+                appdata_path: str = os.path.expanduser(StandardMacOSPath.APPLICATION_SUPPORT)
+
+            case _:
+                raise UnsupportedOS(operating_system=sys.platform)
+
+        return appdata_path
+
+    def _load_app_directory_path(self) -> None:
+            #TODO this one is kinda ugly, gotta clean it up later
+
+        if self.config.base_path_override is not None:
+            match self.config.base_path_override:
+                case StandardWindowsPath() as environment_key:
+                    if sys.platform != _OperatingSystem.WINDOWS:
+                        raise OSError("Cannot use a standard windows path as a base path override. Incompatible OS.")
+
+                    envelope = os.getenv(environment_key)
+                    if envelope is None:
+                        raise MissingEnvironmentVariable(environment_key) 
+                    
+                    self.base_path: str = envelope
+                    
+                case StandardLinuxPath() as linux_path:
+                    if sys.platform != _OperatingSystem.LINUX:
+                        warnings.warn("Path provided is a Linux standard.", WrongOSPathOverrideWarning)
+
+                    self.base_path: str = os.path.expanduser(linux_path)
+
+                case StandardMacOSPath() as mac_path:
+                    if sys.platform != _OperatingSystem.MAC:
+                        warnings.warn("Path provided is a MacOS standard.", WrongOSPathOverrideWarning)
+
+                    self.base_path: str = os.path.expanduser(mac_path)
+
+                case str():
+                    warnings.warn("Use with caution.", ManualOverrideWarning)
+                    self.base_path: str = os.path.expanduser(self.config.base_path_override)
+
+                case _:
+                    raise SkillIssue("Im not gonna lie I dont know how you got here.")
+        else:
+            self.base_path:str = self._get_appdata_path()
+
+        _formatted_name: str = f"{self.app_name}-test" if self.config.is_test else self.app_name
+        self.app_directory_path: str = os.path.join(self.base_path, _formatted_name)

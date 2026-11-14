@@ -1,27 +1,12 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Optional, Final
+from typing import Optional
 import json
 import os
 
-from custom_exceptions import Error
+from .exceptions import MissingFileError, MissingDirectoryError, CorruptedFileError
 
 from shutil import copy2
-
-class MissingDirectoryError(Error):
-    def __init__(self, directory_path: str) -> None:
-        message = f"Directory Not Found at path: {directory_path}"
-        super().__init__(message)
-
-class MissingFileError(Error):
-    def __init__(self, file_path: str, notes: Optional[str] = "None") -> None:
-        message = f"File Not Found at path: {file_path}. Notes: {notes}"
-        super().__init__(message)
-
-class CorruptedFileError(Error):
-    def __init__(self, file_path: str, notes: Optional[str] = "None") -> None:
-        message = f"File corrupted at: {file_path}. Notes: {notes}"
-        super().__init__(message)
 
 class SupportedFileType(StrEnum):
     """
@@ -67,8 +52,34 @@ class _SupportedFile:
         copy2(self.file_path, backup_file_path)
         return True
 
+class EncodingMethod(StrEnum):
+    """
+    Common cross-platform text encodings compatible with Python's open().
 
-        
+    UTF-8 is generally the only option that makes sense, but I mean, options amirite?
+    """
+
+    UTF_8 = "utf-8"
+    UTF_8_SIG = "utf-8-sig"
+    UTF_16 = "utf-16"
+    UTF_16_LE = "utf-16-le"
+    UTF_16_BE = "utf-16-be"
+    UTF_32 = "utf-32"
+    UTF_7 = "utf-7"
+
+    ASCII = "ascii"
+
+    LATIN_1 = "latin-1"
+    ISO_8859_15 = "iso8859-15"
+    CP1252 = "cp1252"
+    CP437 = "cp437"
+
+    CP1251 = "cp1251"
+    SHIFT_JIS = "shift-jis"
+    GBK = "gbk"
+    EUC_KR = "euc-kr"
+    MAC_ROMAN = "mac-roman"
+
 @dataclass
 class JsonFile(_SupportedFile):
     """
@@ -76,7 +87,7 @@ class JsonFile(_SupportedFile):
     Inherits name, directory_path, and file_path property from SupportedFile
     """
     file_type: SupportedFileType = SupportedFileType.JSON
-    encoding: str = "utf-8"
+    encoding: EncodingMethod = EncodingMethod.UTF_8
 
     def push(self, data: dict | list, directory_provision: bool = False) -> None:
         """
