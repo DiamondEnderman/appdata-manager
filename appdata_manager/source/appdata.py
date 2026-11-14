@@ -78,6 +78,8 @@ class StorageConfig:
     data.
 
     Base path override accepts members from the StandardPath enumclasses, full paths, or ~ paths.
+
+    If you use a manual override, I would recommend using os.path or pathlib.Path.
     """
     base_path_override: Optional[str | StandardPath] = None
     subfolders: list[str | list[str] | tuple[str, ...]] = field(default_factory=list) 

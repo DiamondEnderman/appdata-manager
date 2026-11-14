@@ -30,11 +30,15 @@ class _SupportedFile:
     file_type: SupportedFileType
 
     @property
-    def file_path(self):
-        return os.path.join(self.directory_path, f"{self.name}{self.file_type}")
+    def name_with_extension(self) -> str:
+        return f"{self.name}{self.file_type}"
+
+    @property
+    def file_path(self) -> str:
+        return os.path.join(self.directory_path, self.name_with_extension)
 
     def backup(self, destination_directory: Optional[str] = None, missing_ok: bool = False) -> bool:
-        backup_file_name = f"{self.name}{SupportedFileType.BAK}"
+        backup_file_name = f"{self.name_with_extension}{SupportedFileType.BAK}"
         backup_file_path = os.path.join(
             self.directory_path if destination_directory is None else destination_directory,
             backup_file_name
@@ -89,6 +93,10 @@ class JsonFile(_SupportedFile):
     file_type: SupportedFileType = SupportedFileType.JSON
     encoding: EncodingMethod = EncodingMethod.UTF_8
 
+    @property
+    def _temp_file_path(self) -> str:
+        return os.path.join(self.directory_path, f"{self.name_with_extension}{SupportedFileType.TMP}")
+
     def push(self, data: dict | list, directory_provision: bool = False) -> None:
         """
         Pushes given data to disk, writes the data to a temp file before fully
@@ -109,19 +117,17 @@ class JsonFile(_SupportedFile):
         else:
             os.makedirs(self.directory_path, exist_ok=True)
 
-        temp_path = os.path.join(self.directory_path, f"{self.name}{SupportedFileType.TMP}")
-
         try:
-            with open(temp_path, "w", encoding=self.encoding) as file:
-                    json.dump(data, file, indent=4)
-                    file.flush()
-                    os.fsync(file.fileno())
+            with open(self._temp_file_path, "w", encoding=self.encoding) as file:
+                json.dump(data, file, indent=4)
+                file.flush()
+                os.fsync(file.fileno())
 
-            os.replace(temp_path, self.file_path)
+            os.replace(self._temp_file_path, self.file_path)
 
         except Exception:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            if os.path.exists(self._temp_file_path):
+                os.remove(self._temp_file_path)
             raise
 
     def pull(self, default: Optional[dict | list] = None) -> dict | list:
@@ -138,14 +144,14 @@ class JsonFile(_SupportedFile):
 
             return default
 
-        with open(self.file_path, "r", encoding = self.encoding) as file:
-            try:
+        try:
+            with open(self.file_path, "r", encoding = self.encoding) as file:
                 return json.load(file)
-            except json.JSONDecodeError:
-                corrupted_path = os.path.join(self.directory_path, f"{self.name}{SupportedFileType.CORRUPT}")
-                os.replace(self.file_path, corrupted_path)
+        except json.JSONDecodeError:
+            corrupted_path = os.path.join(self.directory_path, f"{self.name_with_extension}{SupportedFileType.CORRUPT}")
+            os.replace(self.file_path, corrupted_path)
 
-                raise CorruptedFileError(self.file_path, notes=f"Saving corrupted version at {corrupted_path}")
+            raise CorruptedFileError(self.file_path, notes=f"Saving corrupted version at {corrupted_path}")
 
 #TODO
 #Need to add .db and .log file support
@@ -155,12 +161,12 @@ class DbFile(_SupportedFile):
     file_type: SupportedFileType = SupportedFileType.DB
     directory_provision: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.directory_provision:
             self.provide_directory()
         
 
-    def provide_directory(self):
+    def provide_directory(self) -> None:
         os.makedirs(self.directory_path, exist_ok=True)
 
     
