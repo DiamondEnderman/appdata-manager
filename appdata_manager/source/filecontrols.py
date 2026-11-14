@@ -158,15 +158,30 @@ class JsonFile(_SupportedFile):
 
 @dataclass
 class DbFile(_SupportedFile):
+    """
+    This is just a bridge layer that can be handled by ORMS of your choice
+
+    Support for built-in ORM factory methods will come later
+    """
     file_type: SupportedFileType = SupportedFileType.DB
     directory_provision: bool = True
 
     def __post_init__(self) -> None:
         if self.directory_provision:
             self.provide_directory()
-        
+
+    @property
+    def connection_uri(self) -> str:
+        return f"sqlite:///{self._normalized_file_path}"
+
+    @property
+    def _normalized_file_path(self) -> str:
+        return os.path.abspath(self.file_path).replace("\\", "/")
 
     def provide_directory(self) -> None:
         os.makedirs(self.directory_path, exist_ok=True)
 
-    
+        #TODO
+        #I do want to add full factory methods for SQL ORMs that would use those ORMs to do everything you would want.
+        #I think this could be pretty simple to accomplish but for right now, this is fully decoupled and requires no
+        #other prerequisites.

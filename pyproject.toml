@@ -7,5 +7,23 @@ name = "appdata_manager"
 version = "1.0.1"
 description = "A lightweight, cross-platform APPDATA file and directory manager."
 readme = "README.md"
-authors = [{name = "DiamondEnderman"}]
+authors = [{ name = "DiamondEnderman" }]
+
+requires-python = ">=3.11"
+
 dependencies = []
+
+[project.optional-dependencies]
+# Installable via: pip install appdata_manager[sqlmodel]
+sqlmodel = [
+    "sqlmodel>=0.0.14",
+]
+# Installable via: pip install appdata_manager[dev]
+dev = [
+    "pytest>=7.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["appdata_manager*"]
+exclude = ["unit_tests*", "temp*"]

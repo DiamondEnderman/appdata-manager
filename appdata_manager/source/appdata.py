@@ -79,19 +79,22 @@ class StorageConfig:
 
     Base path override accepts members from the StandardPath enumclasses, full paths, or ~ paths.
 
-    If you use a manual override, I would recommend using os.path or pathlib.Path.
+    If you use a manual override, I would recommend using os.path.
+    If you choose to use pathlib.Path, for now it will have to be turned into a string.
     """
     base_path_override: Optional[str | StandardPath] = None
+        #TODO I need to add built in support for pathlib.Path objects, this should be pretty easy but its not of major concern for now.
+        #For now if you use pathlib.Path objects, you must turn them into a string before passing them to base path override.
     subfolders: list[str | list[str] | tuple[str, ...]] = field(default_factory=list) 
-    is_test: bool = False 
-        #TODO Something I want to add is just in time provisioning,
-        #So I want to make this StorageConfig object work without NEEDING predetermined subfolders
-        #Thats sort of a for later project since IMO having a base folder setup is going to be quite useful
+        #TODO Something I want to add is just in time provisioning.
+        #So I want to make this StorageConfig object work without NEEDING predetermined subfolders.
+        #Thats sort of a for later project since IMO having a base folder setup is going to be quite useful.
         #for anything I personally make.
+    is_test: bool = False 
 
     def __post_init__(self):
         if not isinstance(self.base_path_override, str | None):
-            raise SkillIssue(f"You haven't even got the prerequisites ready. Type: {type(self.base_path_override).__name__}")
+            raise SkillIssue(f"Base path override must be either a string or None. Type: {type(self.base_path_override).__name__}")
 
         if self.base_path_override is not None and not self.base_path_override.strip():
             raise InvalidPathError(self.base_path_override, notes="Base path override cannot be empty or consist of only whitespace")
@@ -105,7 +108,7 @@ class AppData:
     Functional on Windows, Linux, and MacOS.
     
     On linux, the base directory defaults to .local/share/
-    but this can be overridden with standard linux paths or a completely custom override
+    but this can be overridden with standard linux paths or a completely custom override.
     """
 
     def __init__(self, app_name: str, config: Optional[StorageConfig] = None, provision: bool = True) -> None:
@@ -126,7 +129,7 @@ class AppData:
     def provision(self) -> None:
         """
         Creates the base directory if it has not already been created
-        and does the same with all subfolders given in the StorageConfig instance
+        and does the same with all subfolders given in the StorageConfig instance.
         """
         self.create_folder()
         for item in self.config.subfolders:
@@ -180,7 +183,7 @@ class AppData:
                 self.base_path = self._get_appdata_path()
 
             case _:
-                raise SkillIssue("Im not gonna lie I dont know how you got here.")
+                raise SkillIssue("Im not gonna lie I dont know how you got here. Base path override must be a string.")
 
         _formatted_name: str = f"{self.app_name}-test" if self.config.is_test else self.app_name
         self.app_directory_path: str = os.path.join(self.base_path, _formatted_name)

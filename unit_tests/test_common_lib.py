@@ -25,6 +25,4 @@ def build_temp_folder():
 if _AUTO_BUILD_TEMP:
     build_temp_folder()
 
-class SkillIssue(Exception):
-    def __init__(self, message: str = "Did pylance not warn you plenty? Like, this is a unit test and you managed to get this exception.") -> None:
-        super().__init__(message)
+#Skill issue exception removed since it is now a part of the base package
