@@ -24,5 +24,3 @@ def build_temp_folder():
 
 if _AUTO_BUILD_TEMP:
     build_temp_folder()
-
-#Skill issue exception removed since it is now a part of the base package

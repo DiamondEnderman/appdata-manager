@@ -3,19 +3,17 @@ from enum import StrEnum
 from typing import Optional
 import json
 import os
+from shutil import copy2
 
 from .exceptions import MissingFileError, MissingDirectoryError, CorruptedFileError
-
-from shutil import copy2
 
 class SupportedFileType(StrEnum):
     """
     These are all of the currently supported file types.
     """
     JSON = ".json"
-    #TODO Uncomment these when they are added
     DB = ".db"
-    #LOG = ".log"
+    LOG = ".log"
     TMP = ".tmp"
     BAK = ".bak"
     CORRUPT = ".corrupt"
@@ -28,6 +26,11 @@ class _SupportedFile:
     name: str
     directory_path: str
     file_type: SupportedFileType
+    directory_provision: bool = False
+
+    def __post_init__(self) -> None:
+        if self.directory_provision:
+            self.provide_directory()
 
     @property
     def name_with_extension(self) -> str:
@@ -36,6 +39,9 @@ class _SupportedFile:
     @property
     def file_path(self) -> str:
         return os.path.join(self.directory_path, self.name_with_extension)
+
+    def provide_directory(self) -> None:
+        os.makedirs(self.directory_path, exist_ok=True)
 
     def backup(self, destination_directory: Optional[str] = None, missing_ok: bool = False) -> bool:
         backup_file_name = f"{self.name_with_extension}{SupportedFileType.BAK}"
@@ -97,7 +103,7 @@ class JsonFile(_SupportedFile):
     def _temp_file_path(self) -> str:
         return os.path.join(self.directory_path, f"{self.name_with_extension}{SupportedFileType.TMP}")
 
-    def push(self, data: dict | list, directory_provision: bool = False) -> None:
+    def push(self, data: dict | list) -> None:
         """
         Pushes given data to disk, writes the data to a temp file before fully
         committing it to the json file. If the writing fails, the temp file is removed from disk.
@@ -111,11 +117,9 @@ class JsonFile(_SupportedFile):
                 "Expected list/dict."
             )
 
-        if not directory_provision:
+        if not self.directory_provision:
             if not os.path.isdir(self.directory_path):
                 raise MissingDirectoryError(self.directory_path)
-        else:
-            os.makedirs(self.directory_path, exist_ok=True)
 
         try:
             with open(self._temp_file_path, "w", encoding=self.encoding) as file:
@@ -166,10 +170,6 @@ class DbFile(_SupportedFile):
     file_type: SupportedFileType = SupportedFileType.DB
     directory_provision: bool = True
 
-    def __post_init__(self) -> None:
-        if self.directory_provision:
-            self.provide_directory()
-
     @property
     def connection_uri(self) -> str:
         return f"sqlite:///{self._normalized_file_path}"
@@ -178,10 +178,18 @@ class DbFile(_SupportedFile):
     def _normalized_file_path(self) -> str:
         return os.path.abspath(self.file_path).replace("\\", "/")
 
-    def provide_directory(self) -> None:
-        os.makedirs(self.directory_path, exist_ok=True)
-
         #TODO
         #I do want to add full factory methods for SQL ORMs that would use those ORMs to do everything you would want.
         #I think this could be pretty simple to accomplish but for right now, this is fully decoupled and requires no
         #other prerequisites.
+
+@dataclass
+class LogFile(_SupportedFile):
+    """
+    For now, just a bridge to use with Python's built-in logging module
+    """
+    file_type: SupportedFileType = SupportedFileType.LOG
+    directory_provision: bool = True
+        #TODO
+        #I will be adding full factory methods for logging using Python's logging module.
+        #for now, this will just serve as a bridge between my architecture and said module
