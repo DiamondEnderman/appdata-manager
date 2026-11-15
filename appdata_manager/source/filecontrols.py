@@ -18,6 +18,34 @@ class SupportedFileType(StrEnum):
     BAK = ".bak"
     CORRUPT = ".corrupt"
 
+class EncodingMethod(StrEnum):
+    """
+    Common cross-platform text encodings compatible with Python's open().
+
+    UTF-8 is generally the only option that makes sense, but I mean, options amirite?
+    """
+
+    UTF_8 = "utf-8"
+    UTF_8_SIG = "utf-8-sig"
+    UTF_16 = "utf-16"
+    UTF_16_LE = "utf-16-le"
+    UTF_16_BE = "utf-16-be"
+    UTF_32 = "utf-32"
+    UTF_7 = "utf-7"
+
+    ASCII = "ascii"
+
+    LATIN_1 = "latin-1"
+    ISO_8859_15 = "iso8859-15"
+    CP1252 = "cp1252"
+    CP437 = "cp437"
+
+    CP1251 = "cp1251"
+    SHIFT_JIS = "shift-jis"
+    GBK = "gbk"
+    EUC_KR = "euc-kr"
+    MAC_ROMAN = "mac-roman"
+
 @dataclass
 class _SupportedFile:
     """
@@ -27,6 +55,7 @@ class _SupportedFile:
     directory_path: str
     file_type: SupportedFileType
     directory_provision: bool = False
+    encoding: Optional[EncodingMethod] = EncodingMethod.UTF_8
 
     def __post_init__(self) -> None:
         if self.directory_provision:
@@ -62,34 +91,6 @@ class _SupportedFile:
         copy2(self.file_path, backup_file_path)
         return True
 
-class EncodingMethod(StrEnum):
-    """
-    Common cross-platform text encodings compatible with Python's open().
-
-    UTF-8 is generally the only option that makes sense, but I mean, options amirite?
-    """
-
-    UTF_8 = "utf-8"
-    UTF_8_SIG = "utf-8-sig"
-    UTF_16 = "utf-16"
-    UTF_16_LE = "utf-16-le"
-    UTF_16_BE = "utf-16-be"
-    UTF_32 = "utf-32"
-    UTF_7 = "utf-7"
-
-    ASCII = "ascii"
-
-    LATIN_1 = "latin-1"
-    ISO_8859_15 = "iso8859-15"
-    CP1252 = "cp1252"
-    CP437 = "cp437"
-
-    CP1251 = "cp1251"
-    SHIFT_JIS = "shift-jis"
-    GBK = "gbk"
-    EUC_KR = "euc-kr"
-    MAC_ROMAN = "mac-roman"
-
 @dataclass
 class JsonFile(_SupportedFile):
     """
@@ -97,7 +98,6 @@ class JsonFile(_SupportedFile):
     Inherits name, directory_path, and file_path property from SupportedFile
     """
     file_type: SupportedFileType = SupportedFileType.JSON
-    encoding: EncodingMethod = EncodingMethod.UTF_8
 
     @property
     def _temp_file_path(self) -> str:
@@ -169,6 +169,7 @@ class DbFile(_SupportedFile):
     """
     file_type: SupportedFileType = SupportedFileType.DB
     directory_provision: bool = True
+    encoding: Optional[EncodingMethod] = None
 
     @property
     def connection_uri(self) -> str:
